@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+$0/../DerivedData/nstrct/Build/Products/Debug/cross_platform_test $1
