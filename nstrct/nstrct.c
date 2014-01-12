@@ -1,7 +1,3 @@
-/*
- *  NSTRCT BINARY PROTOCOL
- */
-
 #include <stdio.h>
 #include <string.h>
 
@@ -117,7 +113,7 @@ nstrct_string_t nstrct_to_string(const char * str) {
 /* API Length Calculation */
 
 uint16_t nstrct_instruction_length(nstrct_instruction_t * instruction) {
-    return 5+nstrct_arguments_length(instruction->arguments, &instruction->num_arguments);
+  return 5+nstrct_arguments_length(instruction->arguments, &instruction->num_arguments);
 }
 
 uint8_t nstrct_datatype_length(nstrct_datatype_t * datatype, nstrct_argument_value_t * value) {
@@ -243,7 +239,9 @@ void nstrct_pack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t * v
   }
 }
 
-void nstrct_unpack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t * value, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
+nstrct_error_t nstrct_unpack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t * value, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
+  nstrct_error_t error = NSTRCT_ERROR_SUCCESS;
+  
   switch(*datatype) {
     case NSTRCT_DATATYPE_BOOLEAN: nstrct_read_buffer(buffer, &value->boolean, 1, cursor); break;
     case NSTRCT_DATATYPE_INT8: nstrct_read_buffer(buffer, &value->int8, 1, cursor); break;
@@ -303,7 +301,10 @@ void nstrct_unpack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t *
       break;
     }
     case NSTRCT_DATATYPE_ARRAY: break;
+    default: return NSTRCT_ERROR_DATATYPE_INVALID;
   }
+  
+  return error;
 }
 
 void nstrct_pack_arguments(nstrct_argument_t * arguments, uint8_t * num_arguments, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor) {
@@ -325,7 +326,9 @@ void nstrct_pack_arguments(nstrct_argument_t * arguments, uint8_t * num_argument
   }
 }
 
-void nstrct_unpack_arguments(nstrct_argument_t * arguments, uint8_t * num_arguments, nstrct_argument_value_t * values, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
+nstrct_error_t nstrct_unpack_arguments(nstrct_argument_t * arguments, uint8_t * num_arguments, nstrct_argument_value_t * values, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
+  nstrct_error_t error = NSTRCT_ERROR_SUCCESS;
+
   uint16_t i;
   uint16_t value_cursor = 0;
   for(i=0; i<*num_arguments; i++) {
@@ -340,11 +343,19 @@ void nstrct_unpack_arguments(nstrct_argument_t * arguments, uint8_t * num_argume
       arguments[i].array_values = &values[value_cursor];
       int ii;
       for(ii=0; ii<arguments[i].array_elements; ii++) {
-        nstrct_unpack_value(&arguments[i].array_element_type, &values[value_cursor], buffer, cursor);
+        error = nstrct_unpack_value(&arguments[i].array_element_type, &values[value_cursor], buffer, cursor);
+        if(error) {
+          break;
+        }
         value_cursor++;
       }
     } else {
-      nstrct_unpack_value(&arguments[i].type, &arguments[i].value, buffer, cursor);
+      error = nstrct_unpack_value(&arguments[i].type, &arguments[i].value, buffer, cursor);
+    }
+    if(error) {
+      break;
     }
   }
+  
+  return error;
 }

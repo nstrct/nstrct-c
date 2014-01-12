@@ -1,7 +1,3 @@
-/*
- *  NSTRCT BINARY PROTOCOL
- */
-
 #include <string.h>
 
 #include "seatest.h"

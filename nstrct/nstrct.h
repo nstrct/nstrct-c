@@ -1,7 +1,3 @@
-/*
- *  NSTRCT BINARY PROTOCOL
- */
-
 #ifndef NSTRCT_H__
 #define NSTRCT_H__
 
@@ -107,7 +103,7 @@ typedef struct {
 } nstrct_argument_t;
 
 /**
- * The message object.
+ * The instruction object.
  */
 typedef struct {
   uint16_t code;
@@ -115,6 +111,18 @@ typedef struct {
   uint16_t num_array_elements;
   nstrct_argument_t * arguments;
 } nstrct_instruction_t;
+
+/**
+ * Return Values
+ */
+typedef enum {
+  NSTRCT_ERROR_SUCCESS = 0,
+  NSTRCT_ERROR_NO_FRAME_AVAILABLE,
+  NSTRCT_ERROR_FRAME_START_INVALID,
+  NSTRCT_ERROR_FRAME_END_INVALID,
+  NSTRCT_ERROR_CHECKSUM_INVALID,
+  NSTRCT_ERROR_DATATYPE_INVALID
+} nstrct_error_t;
 
 /* API Helpers */
 
@@ -128,7 +136,8 @@ double htond(double v);
 double ntohd(double v);
 
 /**
- * Convert a string to a nstrct string.
+ * Convert a string to a nstrct string
+ *
  * @param str the string to convert
  * @return a nstrct string
  */
@@ -138,28 +147,66 @@ nstrct_string_t nstrct_to_string(const char * str);
   
 /**
  * Comnpute the length of an instruction.
+ *
+ * @param instruction
  */
 uint16_t nstrct_instruction_length(nstrct_instruction_t * instruction);
 
 /**
  * Compute the length of a datytype.
+ *
+ * @param datatype
+ * @param value
  */
 uint8_t nstrct_datatype_length(nstrct_datatype_t * datatype, nstrct_argument_value_t * value);
   
 /**
  * Compute the lengths of an argument array.
+ *
+ * @param arguments
+ * @param num arguments
  */
 uint16_t nstrct_arguments_length(nstrct_argument_t * arguments, uint8_t * num_arguments);
   
 /**
  * Count the total array elements of an instruction.
+ *
+ * @param instruction
  */
 uint16_t nstrct_count_array_elements(nstrct_instruction_t * instruction);
   
 /* Packing & Unpacking */
+
+/**
+ *
+ *
+ * @param instruction
+ * @param buffer
+ * @param cursor
+*/
+void nstrct_pack_frame(nstrct_instruction_t * instruction, nstrct_write_buffer_t * buffer, nstrct_cursor_t * cursor);
+
+/**
+ * Check for buffer an available frame
+ *
+ * @param buffer
+ * @param length
+ * @return error
+ */
+nstrct_error_t nstrct_frame_available(nstrct_read_buffer_t buffer, uint16_t length);
+
+/**
+ * Unpack instruction from a frame
+ *
+ * @param instruction
+ * @param buffer
+ * @param cursor
+*/
+void nstrct_unpack_frame(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
   
 /**
- * Pack an instruction into a buffer.
+ * Pack an instruction into a buffer
+ *
  * @param instruction the instruction
  * @param buffer the buffer
  * @param cursor the cursor to the buffer
@@ -167,7 +214,8 @@ uint16_t nstrct_count_array_elements(nstrct_instruction_t * instruction);
 void nstrct_pack_instruction(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor);
   
 /**
- * Unpack an instruction from a buffer.
+ * Unpack an instruction from a buffer
+ *
  * @param instruction the instruction to fill
  * @param buffer the buffer to take from
  * @param cursor the read cursor to the buffer
@@ -175,24 +223,45 @@ void nstrct_pack_instruction(nstrct_instruction_t * instruction, nstrct_write_bu
 void nstrct_unpack_instruction(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
 
 /**
- * Pack a value in a buffer.
+ * Pack a value in a buffer
+ *
+ * @param datatype
+ * @param value
+ * @param cursor
  */
 void nstrct_pack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t * value, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor);
 
 /**
  * Unpack a value from a buffer.
+ *
+ * @param datatype
+ * @param value
+ * @param cursor
+ * @return error
  */
-void nstrct_unpack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t * value, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
+nstrct_error_t nstrct_unpack_value(nstrct_datatype_t * datatype, nstrct_argument_value_t * value, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
 
 /**
- * Pack arguments in a buffer.
+ * Pack arguments in a buffer
+ *
+ * @param arguments
+ * @param num_arguments
+ * @param buffer
+ * @param cursor
  */
 void nstrct_pack_arguments(nstrct_argument_t * arguments, uint8_t * num_arguments, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor);
 
 /**
- * Unpack arguments from a buffer.
+ * Unpack arguments from a buffer
+ *
+ * @param arguments
+ * @param num arguments
+ * @param buffer
+ * @param cursor
+ * @return error
  */
-void nstrct_unpack_arguments(nstrct_argument_t * arguments, uint8_t * num_arguments, nstrct_argument_value_t * values, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
+nstrct_error_t nstrct_unpack_arguments(nstrct_argument_t * arguments, uint8_t * num_arguments, nstrct_argument_value_t * values, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
+
 
 #ifdef __cplusplus
 }
