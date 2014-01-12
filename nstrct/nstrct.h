@@ -136,6 +136,14 @@ double htond(double v);
 double ntohd(double v);
 
 /**
+ * Generate Checksum (crc32)
+ *
+ * @param buffer
+ * @param length
+ */
+uint32_t nstrct_checksum(nstrct_read_buffer_t buffer, uint16_t length);
+
+/**
  * Convert a string to a nstrct string
  *
  * @param str the string to convert
@@ -144,6 +152,13 @@ double ntohd(double v);
 nstrct_string_t nstrct_to_string(const char * str);
   
 /* API Length Calculation */
+
+/**
+ * Computer length of a frame
+ *
+ * @param instruction
+ */
+uint16_t nstrct_frame_length(nstrct_instruction_t* instruction);
   
 /**
  * Comnpute the length of an instruction.
@@ -184,7 +199,7 @@ uint16_t nstrct_count_array_elements(nstrct_instruction_t * instruction);
  * @param buffer
  * @param cursor
 */
-void nstrct_pack_frame(nstrct_instruction_t * instruction, nstrct_write_buffer_t * buffer, nstrct_cursor_t * cursor);
+void nstrct_pack_frame(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor);
 
 /**
  * Check for buffer an available frame
@@ -202,7 +217,7 @@ nstrct_error_t nstrct_frame_available(nstrct_read_buffer_t buffer, uint16_t leng
  * @param buffer
  * @param cursor
 */
-void nstrct_unpack_frame(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
+nstrct_error_t nstrct_unpack_frame(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor);
   
 /**
  * Pack an instruction into a buffer
