@@ -56,16 +56,13 @@ instruction.arguments = arguments;
 /* Packing */
 
 // allocate a buffer of the instructions resulting size
-char buffer[nstrct_instruction_length(&instruction)];
+char buffer[nstrct_frame_length(&instruction)];
 
 // allocate a cursor used by the pack function
 uint16_t write_cursor = 0;
 
-// pack the instructions header
-nstrct_pack_instruction(&instruction, buffer, &write_cursor);
-
-// pack the instructions arguments
-nstrct_pack_arguments(instruction.arguments, &instruction.num_arguments, buffer, &write_cursor);
+// pack the frame
+nstrct_full_pack(&instruction, buffer, 255, &write_cursor);
 
 // send the buffer away
 send_buffer(buffer, write_cursor);
@@ -75,26 +72,23 @@ send_buffer(buffer, write_cursor);
 
 ```c
 // the received buffer of a complete instruction
-const char * buffer = data;
+const char * buffer;
+uint16_t length;
 
 // the read cursor used by the unpack function
 uint16_t read_cursor = 0;
 
-// allocate memory for a instruction to fill
-nstrct_instruction_t instruction;
+// preallocate memory for unpacking
+nstrct_preallocation_t preallocation;
+nstrct_argument_t arguments[20];
+nstrct_argument_value_t values[10];
+preallocation.arguments = arguments;
+preallocation.max_arguments = 20;
+preallocation.array_values = values;
+preallocation.max_array_values = 10;
 
-// unpack the instructions header
-nstrct_unpack_instruction(&instruction, buffer, &read_cursor);
-
-// allocate memory for all arguments carried by the instruction
-nstrct_argument_t arguments[instruction.num_arguments];
-instruction.arguments = arguments;
-
-// allocate memory for all the values that reside in a array
-nstrct_argument_value_t values[instruction.num_array_elements];
-
-// unpack all arguments and values
-nstrct_unpack_arguments(instruction.arguments, &instruction.num_arguments, values, buffer, &read_cursor);
+// unpack the frame
+nstrct_preallocated_unpack(&preallocation, buffer, length, &read_cursor);
 
 // process the instruction
 process_instruction(&instruction);
