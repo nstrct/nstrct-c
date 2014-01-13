@@ -266,9 +266,11 @@ nstrct_error_t nstrct_preallocated_unpack(nstrct_preallocation_t * preallocation
   if(preallocation->instruction.num_array_elements > preallocation->max_array_values) return NSTRCT_ERROR_PREALLOCATION_OVERFLOW;
   
   preallocation->instruction.arguments = preallocation->arguments;
-  nstrct_unpack_arguments(preallocation->arguments, &preallocation->instruction.num_arguments, preallocation->array_values, buffer, cursor);
+  ret = nstrct_unpack_arguments(preallocation->arguments, &preallocation->instruction.num_arguments, preallocation->array_values, buffer, cursor);
   
   *cursor += 5; // frame tail
+  
+  if(ret) return ret;
   
   return NSTRCT_ERROR_SUCCESS;
 }

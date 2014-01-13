@@ -152,7 +152,7 @@ double ntohd(double v);
  * Calculate checksum (crc32)
  *
  * @param buffer
- * @param length
+ * @param buffer length
  * @return checksum
  */
 uint32_t nstrct_checksum(nstrct_read_buffer_t buffer, uint16_t length);
@@ -160,7 +160,7 @@ uint32_t nstrct_checksum(nstrct_read_buffer_t buffer, uint16_t length);
 /**
  * Convert a string to a nstrct string
  *
- * @param str the string to convert
+ * @param string to convert
  * @return a nstrct string
  */
 nstrct_string_t nstrct_to_string(const char * str);
@@ -172,10 +172,10 @@ nstrct_string_t nstrct_to_string(const char * str);
  *
  * @param instruction
  */
-uint16_t nstrct_frame_length(nstrct_instruction_t* instruction);
+uint16_t nstrct_frame_length(nstrct_instruction_t * instruction);
   
 /**
- * Comnpute the length of w whole instruction
+ * Comnpute the length of whole instruction
  *
  * @param instruction
  */
