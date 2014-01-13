@@ -55,10 +55,9 @@ void generate() {
   instruction.num_arguments = 14;
   instruction.arguments = arguments;
   
-  char buffer[nstrct_instruction_length(&instruction)];
+  char buffer[512];
   uint16_t write_cursor = 0;
-  nstrct_pack_instruction(&instruction, buffer, &write_cursor);
-  nstrct_pack_arguments(instruction.arguments, &instruction.num_arguments, buffer, &write_cursor);
+  nstrct_full_pack(&instruction, buffer, 512, &write_cursor);
   
   uint32_t _write_cursor = htonl(write_cursor);
   char length[4];
@@ -85,30 +84,33 @@ void process() {
   char data_buffer[length];
   fread(data_buffer, sizeof(char), length, stdin);
   uint16_t read_cursor = 0;
-
-  nstrct_instruction_t instruction;
-  nstrct_unpack_instruction(&instruction, data_buffer, &read_cursor);
-  nstrct_argument_t arguments[instruction.num_arguments];
-  nstrct_argument_value_t values[instruction.num_array_elements];
-  instruction.arguments = arguments;
-  nstrct_unpack_arguments(instruction.arguments, &instruction.num_arguments, values, data_buffer, &read_cursor);
   
-  assert("    boolean value error\n", instruction.arguments[0].value.boolean == 0);
-  assert("    int8 value error\n", instruction.arguments[1].value.int8 == INT8_MIN);
-  assert("    int16 value error\n", instruction.arguments[2].value.int16 == INT16_MIN);
-  assert("    int32 value error\n", instruction.arguments[3].value.int32 == INT32_MIN);
-  assert("    int64 value error\n", instruction.arguments[4].value.int64 == INT64_MIN);
-  assert("    uint8 value error\n", instruction.arguments[5].value.uint8 == UINT8_MAX);
-  assert("    uint16 value error\n", instruction.arguments[6].value.uint16 == UINT16_MAX);
-  assert("    uint32 value error\n", instruction.arguments[7].value.uint32 == UINT32_MAX);
-  assert("    uint64 value error\n", instruction.arguments[8].value.uint64 == UINT64_MAX);
-  assert("    float32 value error\n", instruction.arguments[9].value.float32 == float32_max);
-  assert("    float64 value error\n", instruction.arguments[10].value.float64 == float64_max);
+  nstrct_preallocation_t preallocation;
+  nstrct_argument_t arguments[20];
+  nstrct_argument_value_t values[10];
+  preallocation.arguments = arguments;
+  preallocation.max_arguments = 20;
+  preallocation.array_values = values;
+  preallocation.max_array_values = 10;
+  
+  nstrct_preallocated_unpack(&preallocation, data_buffer, length, &read_cursor);
+  
+  assert("    boolean value error\n", preallocation.instruction.arguments[0].value.boolean == 0);
+  assert("    int8 value error\n", preallocation.instruction.arguments[1].value.int8 == INT8_MIN);
+  assert("    int16 value error\n", preallocation.instruction.arguments[2].value.int16 == INT16_MIN);
+  assert("    int32 value error\n", preallocation.instruction.arguments[3].value.int32 == INT32_MIN);
+  assert("    int64 value error\n", preallocation.instruction.arguments[4].value.int64 == INT64_MIN);
+  assert("    uint8 value error\n", preallocation.instruction.arguments[5].value.uint8 == UINT8_MAX);
+  assert("    uint16 value error\n", preallocation.instruction.arguments[6].value.uint16 == UINT16_MAX);
+  assert("    uint32 value error\n", preallocation.instruction.arguments[7].value.uint32 == UINT32_MAX);
+  assert("    uint64 value error\n", preallocation.instruction.arguments[8].value.uint64 == UINT64_MAX);
+  assert("    float32 value error\n", preallocation.instruction.arguments[9].value.float32 == float32_max);
+  assert("    float64 value error\n", preallocation.instruction.arguments[10].value.float64 == float64_max);
   nstrct_string_t string1 = nstrct_to_string("hello world");
-  assert("    string value error\n", memcmp(instruction.arguments[11].value.string.ptr, string1.ptr, 11) == 0);
-  assert("    string value error\n", instruction.arguments[12].value.string.size == 0);
-  assert("    array uint16 value 1 error\n", instruction.arguments[13].array_values[0].uint16 == 2443);
-  assert("    array uint16 value 2 error\n", instruction.arguments[13].array_values[1].uint16 == 3443);
+  assert("    string value error\n", memcmp(preallocation.instruction.arguments[11].value.string.ptr, string1.ptr, 11) == 0);
+  assert("    string value error\n", preallocation.instruction.arguments[12].value.string.size == 0);
+  assert("    array uint16 value 1 error\n", preallocation.instruction.arguments[13].array_values[0].uint16 == 2443);
+  assert("    array uint16 value 2 error\n", preallocation.instruction.arguments[13].array_values[1].uint16 == 3443);
   
   printf("    tests passed\n");
   exit(0);
