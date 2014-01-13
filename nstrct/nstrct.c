@@ -5,8 +5,6 @@
 
 /* Globals */
 
-#define NSTRCT_FRAME_OVERHEAD 8
-
 uint8_t __nstrct_frame_start = 0x55;
 uint8_t __nstrct_frame_end = 0xAA;
 
@@ -181,7 +179,7 @@ nstrct_string_t nstrct_to_string(const char * str) {
 /* API Length Calculation */
 
 uint16_t nstrct_frame_length(nstrct_instruction_t* instruction) {
-  return nstrct_instruction_length(instruction)+NSTRCT_FRAME_OVERHEAD;
+  return nstrct_instruction_length(instruction)+8;
 }
 
 uint16_t nstrct_instruction_length(nstrct_instruction_t * instruction) {
@@ -238,14 +236,54 @@ uint16_t nstrct_count_array_elements(nstrct_instruction_t * instruction) {
 
 /* Packing & Unpacking */
 
-void nstrct_pack_frame(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor) {
+nstrct_error_t nstrct_full_pack(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, uint16_t length, nstrct_cursor_t * cursor) {
+  uint16_t frame_length = nstrct_frame_length(instruction);
+  
+  if(frame_length > length) return NSTRCT_ERROR_BUFFER_OVERFLOW;
+
+  nstrct_pack_frame_head(instruction, buffer, cursor);
+  nstrct_pack_instruction_head(instruction, buffer, cursor);
+  nstrct_pack_arguments(instruction->arguments, &instruction->num_arguments, buffer, cursor);
+  nstrct_pack_frame_tail(instruction, buffer, cursor);
+  
+  return NSTRCT_ERROR_SUCCESS;
+}
+
+nstrct_error_t nstrct_preallocated_unpack(nstrct_preallocation_t * preallocation, nstrct_read_buffer_t buffer, uint16_t length, nstrct_cursor_t * cursor) {
+  nstrct_error_t ret;
+  
+  ret = nstrct_frame_available(buffer, length);
+  if(ret) return ret;
+
+  ret = nstrct_frame_validate(buffer, length);
+  if(ret) return ret;
+  
+  *cursor += 3; // frame head
+  
+  nstrct_unpack_instruction_head(&preallocation->instruction, buffer, cursor);
+  
+  if(preallocation->instruction.num_arguments > preallocation->max_arguments) return NSTRCT_ERROR_PREALLOCATION_OVERFLOW;
+  if(preallocation->instruction.num_array_elements > preallocation->max_array_values) return NSTRCT_ERROR_PREALLOCATION_OVERFLOW;
+  
+  preallocation->instruction.arguments = preallocation->arguments;
+  nstrct_unpack_arguments(preallocation->arguments, &preallocation->instruction.num_arguments, preallocation->array_values, buffer, cursor);
+  
+  *cursor += 5; // frame tail
+  
+  return NSTRCT_ERROR_SUCCESS;
+}
+
+void nstrct_pack_frame_head(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor) {
   uint16_t instruction_length = nstrct_instruction_length(instruction);
   
   nstrct_write_buffer(buffer, &__nstrct_frame_start, 1, cursor);
   uint16_t length = htons(instruction_length);
   nstrct_write_buffer(buffer, &length, 2, cursor);
-  nstrct_pack_instruction(instruction, buffer, cursor);
-  nstrct_pack_arguments(instruction->arguments, &instruction->num_arguments, buffer, cursor);
+}
+
+void nstrct_pack_frame_tail(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor) {
+  uint16_t instruction_length = nstrct_instruction_length(instruction);
+
   uint32_t checksum = htonl(nstrct_checksum(buffer+3, instruction_length));
   nstrct_write_buffer(buffer, &checksum, 4, cursor);
   nstrct_write_buffer(buffer, &__nstrct_frame_end, 1, cursor);
@@ -267,7 +305,7 @@ nstrct_error_t nstrct_frame_available(nstrct_read_buffer_t buffer, uint16_t leng
       nstrct_read_buffer(buffer, &payload_length, 2, &cursor);
       payload_length = ntohs(payload_length);
       
-      if(length >= payload_length+NSTRCT_FRAME_OVERHEAD) {
+      if(length >= payload_length+8) {
         cursor += payload_length;
         cursor += 4; // checksum
         
@@ -286,32 +324,29 @@ nstrct_error_t nstrct_frame_available(nstrct_read_buffer_t buffer, uint16_t leng
   return NSTRCT_ERROR_NO_FRAME_AVAILABLE;
 }
 
-nstrct_error_t nstrct_unpack_frame(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
-  *cursor += 1; // skip frame start
+nstrct_error_t nstrct_frame_validate(nstrct_read_buffer_t buffer, uint16_t length) {
+  nstrct_error_t ret = NSTRCT_ERROR_SUCCESS;
+  nstrct_cursor_t cursor = 1;
   
   uint16_t payload_length;
-  nstrct_read_buffer(buffer, &payload_length, 2, cursor);
+  nstrct_read_buffer(buffer, &payload_length, 2, &cursor);
   payload_length = ntohs(payload_length);
-  *cursor += payload_length;
+  
+  cursor += payload_length;
   
   uint32_t checksum;
-  nstrct_read_buffer(buffer, &checksum, 4, cursor);
+  nstrct_read_buffer(buffer, &checksum, 4, &cursor);
   checksum = ntohl(checksum);
-
-  *cursor += 1; // skip frame end
-
+  
   uint32_t payload_checksum = nstrct_checksum(buffer+3, payload_length);
   if(checksum != payload_checksum) {
     return NSTRCT_ERROR_CHECKSUM_INVALID;
   }
   
-  nstrct_cursor_t virtual_cursor = 0;
-  nstrct_unpack_instruction(instruction, buffer+3, &virtual_cursor);
-  
-  return NSTRCT_ERROR_SUCCESS;
+  return ret;
 }
 
-void nstrct_pack_instruction(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor) {
+void nstrct_pack_instruction_head(nstrct_instruction_t * instruction, nstrct_write_buffer_t buffer, nstrct_cursor_t * cursor) {
   uint16_t code = htons(instruction->code);
   nstrct_write_buffer(buffer, &code, 2, cursor);
   nstrct_write_buffer(buffer, &instruction->num_arguments, 1, cursor);
@@ -320,7 +355,7 @@ void nstrct_pack_instruction(nstrct_instruction_t * instruction, nstrct_write_bu
   nstrct_write_buffer(buffer, &num_array_elements, 2, cursor);
 }
 
-void nstrct_unpack_instruction(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
+void nstrct_unpack_instruction_head(nstrct_instruction_t * instruction, nstrct_read_buffer_t buffer, nstrct_cursor_t * cursor) {
   uint16_t code;
   nstrct_read_buffer(buffer, &code, 2, cursor);
   instruction->code = ntohs(code);
