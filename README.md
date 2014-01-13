@@ -56,7 +56,7 @@ instruction.arguments = arguments;
 /* Packing */
 
 // allocate a buffer of the instructions resulting size
-char buffer[nstrct_frame_length(&instruction)];
+char buffer[255];
 
 // allocate a cursor used by the pack function
 uint16_t write_cursor = 0;
@@ -71,7 +71,7 @@ send_buffer(buffer, write_cursor);
 ## Instruction Processing
 
 ```c
-// the received buffer of a complete instruction
+// the received buffer of a complete frame
 const char * buffer;
 uint16_t length;
 
