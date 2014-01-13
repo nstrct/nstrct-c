@@ -19,7 +19,6 @@ nstrct_cursor_t read_cursor;
 uint16_t buffer_size = 512;
 char buffer[512];
 
-
 void init() {
   arguments[0].type = NSTRCT_DATATYPE_BOOLEAN;
   arguments[0].value.boolean = NSTRCT_FALSE;
