@@ -5,8 +5,8 @@
 
 /* Globals */
 
-uint8_t __nstrct_frame_start = 0x55;
-uint8_t __nstrct_frame_end = 0xAA;
+static const uint8_t __nstrct_frame_start = 0x55;
+static const uint8_t __nstrct_frame_end = 0xAA;
 
 static const uint32_t __nstrct_crc_table[16] = {
   0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
